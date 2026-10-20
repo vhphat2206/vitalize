@@ -163,6 +163,8 @@ class _Row extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 58),
       color: pressed ? V.bg3 : const Color(0x00000000),
       child: Stack(
+        // Centred in the 58 px minimum, as the web row's `align-items: center`.
+        alignment: AlignmentDirectional.centerStart,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: V.pad, vertical: 10),

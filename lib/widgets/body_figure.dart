@@ -103,7 +103,8 @@ class _BodyFigureState extends State<BodyFigure> with SingleTickerProviderStateM
                 compact: widget.compact,
                 pressed: _pressed,
                 interactive: widget.onSelect != null,
-                progress: _intro == null ? 1 : _intro!.value * 1.5,
+                // No intro: settled (1.5) from the start, every part fully drawn.
+                progress: _intro == null ? 1.5 : _intro!.value * 1.5,
               ),
             ),
           );

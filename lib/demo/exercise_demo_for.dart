@@ -1,11 +1,12 @@
 import 'package:flutter/widgets.dart';
 
-import '../app/theme.dart';
 import '../data/models.dart';
+import 'demo_data.dart';
+import 'exercise_demo.dart';
 
 /// The animated demo of an exercise or routine move, with its two captions underneath (or, with
-/// [fill], filling the parent's height without captions, as in the workout player).
-/// Placeholder until the demo rig is ported.
+/// [fill], filling the parent's height without captions, as in the workout player). Nothing when
+/// the id has no demo.
 class ExerciseDemoFor extends StatelessWidget {
   const ExerciseDemoFor({
     super.key,
@@ -21,14 +22,16 @@ class ExerciseDemoFor extends StatelessWidget {
   final bool fill;
 
   @override
-  Widget build(BuildContext context) => AspectRatio(
-    aspectRatio: 1,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: V.bg2,
-        border: Border.all(color: V.line),
-        borderRadius: BorderRadius.circular(V.rControl),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final demo = demoFor(id);
+    if (demo == null) return const SizedBox.shrink();
+    // A new move starts its loop from the beginning.
+    return ExerciseDemo(
+      key: ValueKey(id),
+      demo: demo,
+      primary: primary,
+      secondary: secondary,
+      fill: fill,
+    );
+  }
 }

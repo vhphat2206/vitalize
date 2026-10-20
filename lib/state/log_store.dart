@@ -76,7 +76,7 @@ const mealSlotLabel = {
   MealSlot.breakfast: 'Bữa sáng',
   MealSlot.lunch: 'Bữa trưa',
   MealSlot.dinner: 'Bữa tối',
-  MealSlot.snack: 'Ăn vặt',
+  MealSlot.snack: 'Bữa phụ',
 };
 
 /// A food in a logged meal: the analysed portion times [servings] (0.5, 1, 1.5 …).
