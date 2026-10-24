@@ -34,7 +34,7 @@ Studio, rồi chạy trên điện thoại Android (bật gỡ lỗi USB) hoặc
 build được trên máy Mac.
 
 ```sh
-git clone <link repo>
+git clone https://github.com/vhphat2206/vitalize.git
 cd vitalize
 flutter pub get
 flutter run
