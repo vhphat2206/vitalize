@@ -37,7 +37,7 @@ void main() {
 
   testWidgets('a week of training', (tester) async {
     await usePhone(tester);
-    await tester.pumpWidget(await appFrame(WeekScreen(now: testNow), prefs: seedPrefs()));
+    await tester.pumpWidget(await appFrame(WeekScreen(now: testNow), seed: seedStores));
     await tester.pump(const Duration(seconds: 2));
     expect(
       find.text(
@@ -74,7 +74,7 @@ void main() {
 
   testWidgets('delete a set, undo; open an exercise and a routine', (tester) async {
     await usePhone(tester);
-    await tester.pumpWidget(await appFrame(WeekScreen(now: testNow), prefs: seedPrefs()));
+    await tester.pumpWidget(await appFrame(WeekScreen(now: testNow), seed: seedStores));
     await tester.pump(const Duration(seconds: 2));
     final plank = find.text('Plank');
     await tester.ensureVisible(plank);

@@ -19,12 +19,20 @@ dependencies:
   wakelock_plus: ^1.8.1
   url_launcher: ^6.3.3
   path_drawing: ^1.0.1
+  # One FlutterFire release (15 Oct 2026): on iOS each plugin pins the same firebase-ios-sdk, so
+  # they move together. Held here until fake_cloud_firestore (tests) supports cloud_firestore 7.1.
+  firebase_core: 5.0.0
+  firebase_auth: 7.0.0
+  cloud_firestore: 7.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  fake_cloud_firestore: ^4.4.0
+  # fake_cloud_firestore 4.4 predates platform interface 8.1 (FieldValue.minimum/maximum).
+  cloud_firestore_platform_interface: '>=8.0.7 <8.1.0'
 
 flutter:
   uses-material-design: true

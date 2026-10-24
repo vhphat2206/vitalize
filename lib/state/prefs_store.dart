@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app/haptics.dart';
+import 'cloud.dart';
 
 enum Sex { male, female }
 
@@ -157,25 +160,30 @@ class Settings {
   };
 }
 
-/// The profile and settings, kept on the device.
+/// The profile, kept in Firestore on the user's document (`users/{uid}`, field `profile`), and the
+/// settings, which belong to this phone (haptics, screen, reminders) and stay in its
+/// SharedPreferences.
 class PrefsStore extends ChangeNotifier {
-  PrefsStore(this._prefs) {
+  PrefsStore(this._prefs, this._user) {
     final raw = _prefs.getString(_key);
     if (raw != null) {
       try {
         final j = jsonDecode(raw) as Map<String, dynamic>;
         // Read over the defaults so fields added in later versions get a value.
-        _profile = Profile.fromJson(j['profile'] as Map<String, dynamic>? ?? const {});
         _settings = Settings.fromJson(j['settings'] as Map<String, dynamic>? ?? const {});
       } catch (_) {
         // Damaged prefs fall back to the defaults.
       }
     }
     Haptics.enabled = _settings.haptics;
+    _user.then(_listen);
   }
 
   static const _key = 'vitalize.prefs.v1';
   final SharedPreferences _prefs;
+  final Future<UserDoc> _user;
+  StreamSubscription<Object?>? _subscription;
+  bool _disposed = false;
 
   Profile _profile = const Profile();
   Settings _settings = const Settings();
@@ -183,22 +191,37 @@ class PrefsStore extends ChangeNotifier {
   Profile get profile => _profile;
   Settings get settings => _settings;
 
+  void _listen(UserDoc user) {
+    if (_disposed) return;
+    _subscription = user.snapshots().listen((doc) {
+      try {
+        _profile = Profile.fromJson(doc.data()?['profile'] as Map<String, dynamic>? ?? const {});
+      } catch (_) {
+        _profile = const Profile();
+      }
+      notifyListeners();
+    }, onError: (Object e) => debugPrint('Reading the profile failed: $e'));
+  }
+
   void updateProfile(Profile p) {
     _profile = p;
-    _save();
+    notifyListeners();
+    _user
+        .then((u) => u.set({'profile': p.toJson()}, SetOptions(merge: true)))
+        .catchError((Object e) => debugPrint('Saving the profile failed: $e'));
   }
 
   void updateSettings(Settings s) {
     _settings = s;
     Haptics.enabled = s.haptics;
-    _save();
+    _prefs.setString(_key, jsonEncode({'settings': s.toJson()}));
+    notifyListeners();
   }
 
-  void _save() {
-    _prefs.setString(
-      _key,
-      jsonEncode({'profile': _profile.toJson(), 'settings': _settings.toJson()}),
-    );
-    notifyListeners();
+  @override
+  void dispose() {
+    _disposed = true;
+    _subscription?.cancel();
+    super.dispose();
   }
 }

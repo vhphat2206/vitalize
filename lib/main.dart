@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +12,9 @@ import 'app/shell.dart';
 import 'app/tabs.dart';
 import 'app/theme.dart';
 import 'data/catalog.dart';
+import 'firebase_options.dart';
 import 'logic/reminders.dart';
+import 'state/cloud.dart';
 import 'state/log_store.dart';
 import 'state/prefs_store.dart';
 
@@ -17,14 +22,18 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Light status bar text over the dark floor.
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-  final results = await Future.wait([Catalog.load(), SharedPreferences.getInstance()]);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  final db = FirebaseFirestore.instance;
+  // Not awaited: the app opens straight away, and the stores wait for the user to save.
+  final user = signIn(FirebaseAuth.instance, db);
+  final results = await Future.wait([Catalog.load(db: db), SharedPreferences.getInstance()]);
   final prefs = results[1] as SharedPreferences;
-  final prefsStore = PrefsStore(prefs);
+  final prefsStore = PrefsStore(prefs, user);
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => prefsStore),
-        ChangeNotifierProvider(create: (_) => LogStore(prefs)),
+        ChangeNotifierProvider(create: (_) => LogStore(user)),
         ChangeNotifierProvider(create: (_) => TabNav()),
       ],
       child: const VitalizeApp(),

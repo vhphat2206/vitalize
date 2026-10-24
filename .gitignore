@@ -49,3 +49,6 @@ app.*.map.json
 
 # golden test diff output
 test/failures/
+
+# Firebase CLI
+firebase-debug.log

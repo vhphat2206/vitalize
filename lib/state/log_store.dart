@@ -1,10 +1,15 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models.dart';
+import 'cloud.dart';
+
+/// A time as stored: a Firestore timestamp, or epoch milliseconds.
+DateTime _time(Object? v) =>
+    v is Timestamp ? v.toDate() : DateTime.fromMillisecondsSinceEpoch(v as int);
 
 class LoggedSet {
   const LoggedSet({
@@ -19,7 +24,7 @@ class LoggedSet {
   LoggedSet.fromJson(Map<String, dynamic> j)
     : id = j['id'] as String,
       exerciseId = j['exerciseId'] as String,
-      at = DateTime.fromMillisecondsSinceEpoch(j['at'] as int),
+      at = _time(j['at']),
       kg = (j['kg'] as num?)?.toDouble(),
       reps = j['reps'] as int?,
       seconds = j['seconds'] as int?;
@@ -34,7 +39,7 @@ class LoggedSet {
   Map<String, dynamic> toJson() => {
     'id': id,
     'exerciseId': exerciseId,
-    'at': at.millisecondsSinceEpoch,
+    'at': Timestamp.fromDate(at),
     'kg': ?kg,
     'reps': ?reps,
     'seconds': ?seconds,
@@ -52,7 +57,7 @@ class LoggedSession {
   LoggedSession.fromJson(Map<String, dynamic> j)
     : id = j['id'] as String,
       routineId = j['routineId'] as String,
-      at = DateTime.fromMillisecondsSinceEpoch(j['at'] as int),
+      at = _time(j['at']),
       seconds = j['seconds'] as int;
 
   final String id;
@@ -65,7 +70,7 @@ class LoggedSession {
   Map<String, dynamic> toJson() => {
     'id': id,
     'routineId': routineId,
-    'at': at.millisecondsSinceEpoch,
+    'at': Timestamp.fromDate(at),
     'seconds': seconds,
   };
 }
@@ -107,7 +112,7 @@ class LoggedMeal {
 
   LoggedMeal.fromJson(Map<String, dynamic> j)
     : id = j['id'] as String,
-      at = DateTime.fromMillisecondsSinceEpoch(j['at'] as int),
+      at = _time(j['at']),
       slot = MealSlot.values.byName(j['slot'] as String),
       items = [for (final i in j['items'] as List) MealItem.fromJson(i as Map<String, dynamic>)],
       photo = j['photo'] as String?,
@@ -141,7 +146,7 @@ class LoggedMeal {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'at': at.millisecondsSinceEpoch,
+    'at': Timestamp.fromDate(at),
     'slot': slot.name,
     'items': [for (final i in items) i.toJson()],
     'photo': ?photo,
@@ -149,17 +154,23 @@ class LoggedMeal {
   };
 }
 
-/// Logged sets, finished sessions and meals, kept on the device.
+/// Logged sets, finished sessions and meals, kept in Cloud Firestore with the signed-in user
+/// (`users/{uid}/sets`, `…/sessions`, `…/meals`). Firestore also keeps them on the phone, so the
+/// log works offline and catches up when the phone is back online.
+///
+/// Changes show at once: each method updates the lists here, then writes to Firestore, whose
+/// snapshots keep the lists in step afterwards.
 class LogStore extends ChangeNotifier {
-  LogStore(this._prefs) {
-    _load();
+  LogStore(this._user) {
+    _user.then(_listen);
   }
 
-  static const _key = 'vitalize.log.v1';
   static const _photoDays = 30;
 
-  final SharedPreferences _prefs;
+  final Future<UserDoc> _user;
   final _random = Random();
+  final _subscriptions = <StreamSubscription<Object?>>[];
+  bool _disposed = false;
 
   List<LoggedSet> _sets = [];
   List<LoggedSession> _sessions = [];
@@ -169,41 +180,58 @@ class LogStore extends ChangeNotifier {
   List<LoggedSession> get sessions => List.unmodifiable(_sessions);
   List<LoggedMeal> get meals => List.unmodifiable(_meals);
 
-  void _load() {
-    final raw = _prefs.getString(_key);
-    if (raw == null) return;
-    try {
-      final j = jsonDecode(raw) as Map<String, dynamic>;
-      final cutoff = DateTime.now().subtract(const Duration(days: _photoDays));
-      _sets = [
-        for (final s in j['sets'] as List? ?? []) LoggedSet.fromJson(s as Map<String, dynamic>),
-      ];
-      _sessions = [
-        for (final s in j['sessions'] as List? ?? [])
-          LoggedSession.fromJson(s as Map<String, dynamic>),
-      ];
-      _meals = [
-        for (final m in j['meals'] as List? ?? [])
-          () {
-            final meal = LoggedMeal.fromJson(m as Map<String, dynamic>);
-            return meal.at.isBefore(cutoff) ? meal.copyWith(dropPhoto: true) : meal;
-          }(),
-      ];
-    } catch (_) {
-      // A damaged log starts empty rather than crashing the app.
+  void _listen(UserDoc user) {
+    if (_disposed) return;
+    _subscriptions.addAll([
+      _watch(user.collection('sets'), LoggedSet.fromJson, (v) => _sets = v),
+      _watch(user.collection('sessions'), LoggedSession.fromJson, (v) => _sessions = v),
+      _watch(user.collection('meals'), LoggedMeal.fromJson, (v) {
+        _meals = v;
+        _dropOldPhotos();
+      }),
+    ]);
+  }
+
+  StreamSubscription<Object?> _watch<T>(
+    CollectionReference<Map<String, dynamic>> collection,
+    T Function(Map<String, dynamic>) read,
+    void Function(List<T>) keep,
+  ) => collection.orderBy('at').snapshots().listen((snapshot) {
+    final items = <T>[];
+    for (final doc in snapshot.docs) {
+      try {
+        items.add(read({...doc.data(), 'id': doc.id}));
+      } catch (_) {
+        // A damaged entry is left out rather than crashing the app.
+      }
+    }
+    keep(items);
+    notifyListeners();
+  }, onError: (Object e) => debugPrint('Reading ${collection.id} failed: $e'));
+
+  /// Photos are small JPEGs inside the meal; after 30 days only the foods are kept.
+  void _dropOldPhotos() {
+    final cutoff = DateTime.now().subtract(const Duration(days: _photoDays));
+    for (final meal in _meals) {
+      if (meal.photo != null && meal.at.isBefore(cutoff)) {
+        _write((u) => u.collection('meals').doc(meal.id).update({'photo': FieldValue.delete()}));
+      }
     }
   }
 
-  void _save() {
-    _prefs.setString(
-      _key,
-      jsonEncode({
-        'sets': [for (final s in _sets) s.toJson()],
-        'sessions': [for (final s in _sessions) s.toJson()],
-        'meals': [for (final m in _meals) m.toJson()],
-      }),
-    );
-    notifyListeners();
+  /// Runs [write] once signed in. Writes start in the order they were made; offline, Firestore
+  /// queues them and sends them later.
+  void _write(Future<void> Function(UserDoc user) write) {
+    _user.then(write).catchError((Object e) => debugPrint('Saving to Firestore failed: $e'));
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    for (final s in _subscriptions) {
+      s.cancel();
+    }
+    super.dispose();
   }
 
   String _newId() =>
@@ -219,29 +247,32 @@ class LogStore extends ChangeNotifier {
       reps: reps,
       seconds: seconds,
     );
-    _sets = [..._sets, set];
-    _save();
+    restoreSet(set);
     return set;
   }
 
   LoggedSet? removeSet(String id) {
     final found = _sets.where((s) => s.id == id).firstOrNull;
     _sets = _sets.where((s) => s.id != id).toList();
-    _save();
+    notifyListeners();
+    _write((u) => u.collection('sets').doc(id).delete());
     return found;
   }
 
   void restoreSet(LoggedSet set) {
     _sets = [..._sets, set]..sort((a, b) => a.at.compareTo(b.at));
-    _save();
+    notifyListeners();
+    _write((u) => u.collection('sets').doc(set.id).set(set.toJson()));
   }
 
-  void addSession({required String routineId, required int seconds}) {
-    _sessions = [
-      ..._sessions,
-      LoggedSession(id: _newId(), routineId: routineId, at: DateTime.now(), seconds: seconds),
-    ];
-    _save();
+  void addSession({required String routineId, required int seconds}) => restoreSession(
+    LoggedSession(id: _newId(), routineId: routineId, at: DateTime.now(), seconds: seconds),
+  );
+
+  void restoreSession(LoggedSession session) {
+    _sessions = [..._sessions, session]..sort((a, b) => a.at.compareTo(b.at));
+    notifyListeners();
+    _write((u) => u.collection('sessions').doc(session.id).set(session.toJson()));
   }
 
   LoggedMeal addMeal({
@@ -258,35 +289,55 @@ class LogStore extends ChangeNotifier {
       photo: photo,
       source: source,
     );
-    _meals = [..._meals, meal];
-    _save();
+    restoreMeal(meal);
     return meal;
   }
 
   void updateMeal(LoggedMeal meal) {
     _meals = [for (final m in _meals) m.id == meal.id ? meal : m];
-    _save();
+    notifyListeners();
+    _write((u) => u.collection('meals').doc(meal.id).set(meal.toJson()));
   }
 
   LoggedMeal? removeMeal(String id) {
     final found = _meals.where((m) => m.id == id).firstOrNull;
     _meals = _meals.where((m) => m.id != id).toList();
-    _save();
+    notifyListeners();
+    _write((u) => u.collection('meals').doc(id).delete());
     return found;
   }
 
   void restoreMeal(LoggedMeal meal) {
     _meals = [..._meals, meal]..sort((a, b) => a.at.compareTo(b.at));
-    _save();
+    notifyListeners();
+    _write((u) => u.collection('meals').doc(meal.id).set(meal.toJson()));
   }
 
   /// Wipe the training log, the meals, or everything.
   void clear({bool training = false, bool meals = false}) {
+    final doomed = [
+      if (training) ...[
+        for (final s in _sets) ('sets', s.id),
+        for (final s in _sessions) ('sessions', s.id),
+      ],
+      if (meals)
+        for (final m in _meals) ('meals', m.id),
+    ];
     if (training) {
       _sets = [];
       _sessions = [];
     }
     if (meals) _meals = [];
-    _save();
+    notifyListeners();
+    _write((u) async {
+      // A batch takes at most 500 writes.
+      for (var i = 0; i < doomed.length; i += 500) {
+        final batch = u.firestore.batch();
+        for (final (collection, id) in doomed.skip(i).take(500)) {
+          batch.delete(u.collection(collection).doc(id));
+        }
+        await batch.commit();
+      }
+    });
   }
 }

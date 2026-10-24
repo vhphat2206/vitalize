@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vitalize/data/catalog.dart';
 import 'package:vitalize/data/models.dart';
 import 'package:vitalize/state/log_store.dart';
+import 'package:vitalize/state/prefs_store.dart';
 
 /// "Now" in the food and week tests: Tuesday 20 October 2026, 12:30.
 final testNow = DateTime(2026, 10, 20, 12, 30);
@@ -117,11 +118,19 @@ const seedProfile = {
   'daysPerWeek': 3,
 };
 
-/// Stored prefs for [appFrame]: the training log, and the profile when [profile] is set.
-Map<String, Object> seedPrefs({bool training = true, bool profile = false}) => {
-  if (training) 'vitalize.log.v1': jsonEncode(seedTraining()),
-  if (profile) 'vitalize.prefs.v1': jsonEncode({'profile': seedProfile}),
-};
+/// Fills [appFrame]'s stores: the training log, and the profile when [profile] is set.
+void seedStores(LogStore log, PrefsStore prefs, {bool training = true, bool profile = false}) {
+  if (training) {
+    final t = seedTraining();
+    for (final s in t['sets']! as List) {
+      log.restoreSet(LoggedSet.fromJson(s as Map<String, dynamic>));
+    }
+    for (final s in t['sessions']! as List) {
+      log.restoreSession(LoggedSession.fromJson(s as Map<String, dynamic>));
+    }
+  }
+  if (profile) prefs.updateProfile(Profile.fromJson(seedProfile));
+}
 
 /// Decodes every image on screen (image codecs run outside the fake test clock).
 Future<void> loadImages(WidgetTester tester) async {

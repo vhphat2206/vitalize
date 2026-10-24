@@ -1,3 +1,4 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,7 +39,8 @@ Future<void> setUpApp() async {
   _ready = true;
 }
 
-/// A phone-sized app frame around [child], with fresh stores (optionally pre-filled).
+/// A phone-sized app frame around [child], with fresh stores (optionally pre-filled) on an
+/// in-memory Firestore.
 Future<Widget> appFrame(
   Widget child, {
   Map<String, Object> prefs = const {},
@@ -46,8 +48,9 @@ Future<Widget> appFrame(
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final sp = await SharedPreferences.getInstance();
-  final log = LogStore(sp);
-  final p = PrefsStore(sp);
+  final user = Future.value(FakeFirebaseFirestore().collection('users').doc('tester'));
+  final log = LogStore(user);
+  final p = PrefsStore(sp, user);
   seed?.call(log, p);
   return MultiProvider(
     providers: [

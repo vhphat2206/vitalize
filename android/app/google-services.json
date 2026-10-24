@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "455512342228",
+    "project_id": "vitalize-gym",
+    "storage_bucket": "vitalize-gym.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:455512342228:android:08c0e8a9eba247ef65c541",
+        "android_client_info": {
+          "package_name": "app.vitalize.vitalize"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCIGRYg3F2uW7l2xCci86VA0KuC_5iU5o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,12 +1,16 @@
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "app.vitalize.vitalize"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android (notification permission) is built against Android 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

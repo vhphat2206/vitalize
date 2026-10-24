@@ -1,0 +1,38 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "vitalize-gym",
+          "appId": "1:455512342228:android:08c0e8a9eba247ef65c541",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "vitalize-gym",
+          "appId": "1:455512342228:ios:8219fb94a805e67865c541",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "vitalize-gym",
+          "configurations": {
+            "android": "1:455512342228:android:08c0e8a9eba247ef65c541",
+            "ios": "1:455512342228:ios:8219fb94a805e67865c541"
+          }
+        }
+      }
+    }
+  }
+}

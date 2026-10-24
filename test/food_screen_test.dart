@@ -37,8 +37,10 @@ void main() {
     await tester.pumpWidget(
       await appFrame(
         FoodScreen(now: testNow),
-        prefs: seedPrefs(profile: true),
-        seed: (log, _) => seedMeals().forEach(log.restoreMeal),
+        seed: (log, prefs) {
+          seedStores(log, prefs, profile: true);
+          seedMeals().forEach(log.restoreMeal);
+        },
       ),
     );
     await tester.pump(const Duration(seconds: 2));
