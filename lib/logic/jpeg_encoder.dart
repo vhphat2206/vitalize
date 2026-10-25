@@ -3,8 +3,9 @@ import 'dart:typed_data';
 
 /// Encodes RGBA pixels (premultiplied over black, as `ImageByteFormat.rawRgba` gives them) as a
 /// baseline JFIF JPEG with the standard tables and no chroma subsampling. dart:ui can only encode
-/// PNG, which is several times larger for photos; meal thumbnails are kept in local storage, so
-/// they are stored as small JPEGs like the web app's canvas `toBlob('image/jpeg')`.
+/// PNG, which is several times larger for photos; meal thumbnails are kept inside the meal's
+/// Firestore document, so they are stored as small JPEGs like the web app's canvas
+/// `toBlob('image/jpeg')`.
 Uint8List encodeJpeg(Uint8List rgba, int width, int height, {int quality = 72}) {
   assert(rgba.length >= width * height * 4, 'expected RGBA pixels');
   return _JpegEncoder(quality.clamp(1, 100)).encode(rgba, width, height);

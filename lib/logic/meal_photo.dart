@@ -16,7 +16,7 @@ const mealPhotoEdge = 1024.0;
 const mealPhotoQuality = 82;
 
 /// Small thumbnail for the meal log, base64 JPEG (no `data:` prefix): long edge 220 px at 72 %,
-/// small enough to keep many in local storage.
+/// small enough to keep inside the meal's Firestore document.
 Future<String> mealThumbnail(Uint8List photo, {int maxEdge = 220, int quality = 72}) async {
   final buffer = await ui.ImmutableBuffer.fromUint8List(photo);
   final codec = await ui.instantiateImageCodecWithSize(
