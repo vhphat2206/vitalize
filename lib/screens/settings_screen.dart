@@ -152,9 +152,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   void _confirmClear({required bool meals}) {
     final log = context.read<LogStore>();
     final what = meals
-        ? 'Xoá hết ${log.meals.length} bữa ăn đã lưu trên máy này.'
+        ? 'Xoá hết ${log.meals.length} bữa ăn đã lưu.'
         : 'Xoá hết ${log.sets.length + log.sessions.length} mục đã ghi (hiệp tập và buổi tập '
-              'ngắn) trên máy này.';
+              'ngắn).';
     showModalSheet<void>(
       context,
       title: meals ? 'Xoá nhật ký ăn uống?' : 'Xoá nhật ký tập?',
@@ -302,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 30),
                     Group(
-                      title: 'Dữ liệu trên máy này',
+                      title: 'Dữ liệu của bạn',
                       children: [
                         ValueRow(
                           label: 'Xoá nhật ký tập',

@@ -262,9 +262,7 @@ void main() {
     await _wait(tester);
     expect(find.text('Xoá nhật ký tập?'), findsOneWidget);
     expect(
-      find.text(
-        'Xoá hết 3 mục đã ghi (hiệp tập và buổi tập ngắn) trên máy này. Không khôi phục lại được.',
-      ),
+      find.text('Xoá hết 3 mục đã ghi (hiệp tập và buổi tập ngắn). Không khôi phục lại được.'),
       findsOneWidget,
     );
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_confirm.png'));
@@ -295,10 +293,7 @@ void main() {
     expect(find.text('1 bữa ăn'), findsOneWidget);
     await tester.tap(find.text('Xoá nhật ký ăn uống'));
     await _wait(tester);
-    expect(
-      find.text('Xoá hết 1 bữa ăn đã lưu trên máy này. Không khôi phục lại được.'),
-      findsOneWidget,
-    );
+    expect(find.text('Xoá hết 1 bữa ăn đã lưu. Không khôi phục lại được.'), findsOneWidget);
     await tester.tap(find.text('Xoá hết'));
     await _wait(tester);
     expect(tester.element(find.byType(SettingsScreen)).read<LogStore>().meals, isEmpty);
