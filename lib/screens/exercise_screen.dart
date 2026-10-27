@@ -20,6 +20,7 @@ import '../widgets/level_mark.dart';
 import '../widgets/modal_sheet.dart';
 import '../widgets/muscle_plate.dart';
 import '../widgets/ref_list.dart';
+import '../widgets/rest_timer.dart';
 import '../widgets/stepper.dart';
 import 'body/appear.dart';
 
@@ -35,13 +36,22 @@ int? _leadingInt(String s) {
 /// One exercise: equipment and level, the animated demo, the muscles it works, the dose, how
 /// to do it and what goes wrong, the guides behind it and others for the same muscles. The
 /// footer logs a set; today's sets show above the button.
-class ExerciseScreen extends StatelessWidget {
+class ExerciseScreen extends StatefulWidget {
   const ExerciseScreen({super.key, required this.id});
 
   final String id;
 
   @override
+  State<ExerciseScreen> createState() => _ExerciseScreenState();
+}
+
+class _ExerciseScreenState extends State<ExerciseScreen> {
+  /// When the rest after the last logged set ends; null while not resting.
+  DateTime? _restUntil;
+
+  @override
   Widget build(BuildContext context) {
+    final id = widget.id;
     final ex = catalog.exerciseById[id];
     // An id that is no exercise (a set logged before it was renamed, say): just the way back.
     if (ex == null) return const Align(alignment: Alignment.topCenter, child: BackBar());
@@ -76,7 +86,12 @@ class ExerciseScreen extends StatelessWidget {
               ],
             ),
           ),
-          _Footer(today: today, onLog: () => _logSet(context, ex, sets)),
+          _Footer(
+            today: today,
+            restUntil: _restUntil,
+            onRest: (until) => setState(() => _restUntil = until),
+            onLog: () => _logSet(context, ex, sets),
+          ),
         ],
       ),
     );
@@ -106,6 +121,9 @@ class ExerciseScreen extends StatelessWidget {
           );
           Haptics.success();
           Navigator.of(sheet).pop();
+          if (ex.dose.rest > 0) {
+            setState(() => _restUntil = DateTime.now().add(Duration(seconds: ex.dose.rest)));
+          }
           Toast.show(
             context,
             'Đã ghi ${setTextOf(saved)}',
@@ -441,9 +459,16 @@ class _Mistake extends StatelessWidget {
 
 /// Today's sets of this exercise and the button that logs one.
 class _Footer extends StatelessWidget {
-  const _Footer({required this.today, required this.onLog});
+  const _Footer({
+    required this.today,
+    required this.restUntil,
+    required this.onRest,
+    required this.onLog,
+  });
 
   final List<LoggedSet> today;
+  final DateTime? restUntil;
+  final ValueChanged<DateTime?> onRest;
   final VoidCallback onLog;
 
   @override
@@ -458,6 +483,7 @@ class _Footer extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (restUntil case final until?) RestTimer(until: until, onChanged: onRest),
           if (today.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
