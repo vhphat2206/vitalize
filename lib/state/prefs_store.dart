@@ -176,12 +176,12 @@ class PrefsStore extends ChangeNotifier {
       }
     }
     Haptics.enabled = _settings.haptics;
-    _user.then(_listen);
+    _follow(_user);
   }
 
   static const _key = 'vitalize.prefs.v1';
   final SharedPreferences _prefs;
-  final Future<UserDoc> _user;
+  Future<UserDoc> _user;
   StreamSubscription<Object?>? _subscription;
   bool _disposed = false;
 
@@ -190,6 +190,22 @@ class PrefsStore extends ChangeNotifier {
 
   Profile get profile => _profile;
   Settings get settings => _settings;
+
+  /// Another user signed in, or out (see watchUserSwitch): their profile from now on. The
+  /// settings belong to the phone and stay.
+  void switchUser(Future<UserDoc> user) {
+    _subscription?.cancel();
+    _subscription = null;
+    _profile = const Profile();
+    notifyListeners();
+    _user = user;
+    _follow(user);
+  }
+
+  /// Listens to [user] once signed in, unless another user has taken over by then.
+  void _follow(Future<UserDoc> user) => user.then((u) {
+    if (identical(user, _user)) _listen(u);
+  });
 
   void _listen(UserDoc user) {
     if (_disposed) return;

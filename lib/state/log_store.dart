@@ -162,12 +162,12 @@ class LoggedMeal {
 /// snapshots keep the lists in step afterwards.
 class LogStore extends ChangeNotifier {
   LogStore(this._user) {
-    _user.then(_listen);
+    _follow(_user);
   }
 
   static const _photoDays = 30;
 
-  final Future<UserDoc> _user;
+  Future<UserDoc> _user;
   final _random = Random();
   final _subscriptions = <StreamSubscription<Object?>>[];
   bool _disposed = false;
@@ -179,6 +179,25 @@ class LogStore extends ChangeNotifier {
   List<LoggedSet> get sets => List.unmodifiable(_sets);
   List<LoggedSession> get sessions => List.unmodifiable(_sessions);
   List<LoggedMeal> get meals => List.unmodifiable(_meals);
+
+  /// Another user signed in, or out (see watchUserSwitch): drop this log and follow theirs.
+  void switchUser(Future<UserDoc> user) {
+    for (final s in _subscriptions) {
+      s.cancel();
+    }
+    _subscriptions.clear();
+    _sets = [];
+    _sessions = [];
+    _meals = [];
+    notifyListeners();
+    _user = user;
+    _follow(user);
+  }
+
+  /// Listens to [user] once signed in, unless another user has taken over by then.
+  void _follow(Future<UserDoc> user) => user.then((u) {
+    if (identical(user, _user)) _listen(u);
+  });
 
   void _listen(UserDoc user) {
     if (_disposed) return;

@@ -35,3 +35,20 @@ Future<UserDoc> signIn(FirebaseAuth auth, FirebaseFirestore db) async {
     }
   }
 }
+
+StreamSubscription<User?> watchUserSwitch(
+  FirebaseAuth auth,
+  FirebaseFirestore db,
+  void Function(Future<UserDoc> user) onSwitch,
+) {
+  var uid = auth.currentUser?.uid;
+  return auth.authStateChanges().listen((user) {
+    if (user == null) {
+      // Signed out: carry on as a new guest.
+      if (uid != null) onSwitch(signIn(auth, db));
+    } else if (uid != null && user.uid != uid) {
+      onSwitch(Future.value(db.collection('users').doc(user.uid)));
+    }
+    uid = user?.uid;
+  });
+}
