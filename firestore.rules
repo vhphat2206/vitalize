@@ -22,10 +22,53 @@ service cloud.firestore {
       allow read;
     }
 
-    // Each user's profile (on users/{uid}) and log (sets, sessions, meals under it): only that
-    // user, signed in anonymously by the app, can read or change it.
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+        function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function onlyKeys(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
+
+    // users/{uid}: the profile (a map) and when the user first appeared.
+    match /users/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && onlyKeys(['profile', 'createdAt'])
+        && (!('profile' in request.resource.data) || request.resource.data.profile is map);
+    }
+
+    // LoggedSet.toJson
+    match /users/{uid}/sets/{id} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && onlyKeys(['id', 'exerciseId', 'at', 'kg', 'reps', 'seconds'])
+        && request.resource.data.exerciseId is string
+        && request.resource.data.at is timestamp;
+    }
+
+    // LoggedSession.toJson
+    match /users/{uid}/sessions/{id} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && onlyKeys(['id', 'routineId', 'at', 'seconds'])
+        && request.resource.data.routineId is string
+        && request.resource.data.seconds is int
+        && request.resource.data.at is timestamp;
+    }
+
+    // LoggedMeal.toJson; the photo is a small base64 JPEG.
+    match /users/{uid}/meals/{id} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && onlyKeys(['id', 'at', 'slot', 'items', 'photo', 'source'])
+        && request.resource.data.slot in ['breakfast', 'lunch', 'dinner', 'snack']
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 30
+        && (!('photo' in request.resource.data)
+            || (request.resource.data.photo is string
+                && request.resource.data.photo.size() < 200000))
+        && request.resource.data.at is timestamp;
     }
   }
 }
