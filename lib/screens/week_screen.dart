@@ -31,6 +31,7 @@ class WeekScreen extends StatefulWidget {
 }
 
 class _WeekScreenState extends State<WeekScreen> with TabEntrance {
+  int _back = 0;
   void _remove(LoggedSet set) {
     final log = context.read<LogStore>();
     final removed = log.removeSet(set.id);
@@ -48,14 +49,16 @@ class _WeekScreenState extends State<WeekScreen> with TabEntrance {
   Widget build(BuildContext context) {
     final log = context.watch<LogStore>();
     final now = widget.now ?? DateTime.now();
-    final days = weekDays(now);
+    // A day in the week on show; "today" stays [now].
+    final shown = DateTime(now.year, now.month, now.day - 7 * _back);
+    final days = weekDays(shown);
     final sets = [
       for (final s in log.sets)
-        if (inWeek(s.at, now)) s,
+        if (inWeek(s.at, shown)) s,
     ];
     final sessions = [
       for (final s in log.sessions)
-        if (inWeek(s.at, now)) s,
+        if (inWeek(s.at, shown)) s,
     ];
     final volume = muscleVolume(sets);
     final tones = <MuscleId, Tone>{
@@ -86,11 +89,32 @@ class _WeekScreenState extends State<WeekScreen> with TabEntrance {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TabHead(
-              title: 'Tuần này',
+              title: switch (_back) {
+                0 => 'Tuần này',
+                1 => 'Tuần trước',
+                _ => '$_back tuần trước',
+              },
               replay: entrance,
-              subtitle: Text(
-                '${first.day}/${first.month} – ${last.day}/${last.month}',
-                style: VT.mono(13, height: 1.5, color: V.muted),
+              subtitle: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${first.day}/${first.month} – ${last.day}/${last.month}',
+                      style: VT.mono(13, height: 1.5, color: V.muted),
+                    ),
+                  ),
+                  IconBtn(
+                    VIcons.back,
+                    label: 'Tuần trước',
+                    onPressed: () => setState(() => _back++),
+                  ),
+                  if (_back > 0)
+                    IconBtn(
+                      VIcons.chevronRight,
+                      label: 'Tuần sau',
+                      onPressed: () => setState(() => _back--),
+                    ),
+                ],
               ),
             ),
             Semantics(
@@ -115,7 +139,9 @@ class _WeekScreenState extends State<WeekScreen> with TabEntrance {
             Padding(
               padding: const EdgeInsets.fromLTRB(V.pad, 20, V.pad, 0),
               child: Text(
-                weekSentence(sets.length, sessions.length, volume),
+                _back > 0 && sets.isEmpty && sessions.isEmpty
+                    ? 'Tuần đó bạn chưa ghi hiệp hay buổi tập nào.'
+                    : weekSentence(sets.length, sessions.length, volume),
                 style: VT.ui(16, height: 1.5),
               ),
             ),
