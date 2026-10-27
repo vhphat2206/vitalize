@@ -12,7 +12,20 @@
           "package_name": "app.vitalize.vitalize"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "455512342228-dnvvcg57r8vflucnvsrr8pqj1fh4s1f1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vitalize.vitalize",
+            "certificate_hash": "9ee53ed502680eb8374150b600740aa830cbd8d0"
+          }
+        },
+        {
+          "client_id": "455512342228-c4ckhiiirbqeibv6s7buubg42afoqcu9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDCIGRYg3F2uW7l2xCci86VA0KuC_5iU5o"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "455512342228-c4ckhiiirbqeibv6s7buubg42afoqcu9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "455512342228-3lo0qtg7fpjkilne6epvdtlcg82mao2v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.vitalize.flutter"
+              }
+            }
+          ]
         }
       }
     }
