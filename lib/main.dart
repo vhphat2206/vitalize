@@ -17,6 +17,7 @@ import 'logic/reminders.dart';
 import 'state/cloud.dart';
 import 'state/log_store.dart';
 import 'state/prefs_store.dart';
+import 'state/account_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,16 +25,24 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final db = FirebaseFirestore.instance;
+  final auth = FirebaseAuth.instance;
   // Not awaited: the app opens straight away, and the stores wait for the user to save.
-  final user = signIn(FirebaseAuth.instance, db);
+  final user = signIn(auth, db);
   final results = await Future.wait([Catalog.load(db: db), SharedPreferences.getInstance()]);
   final prefs = results[1] as SharedPreferences;
   final prefsStore = PrefsStore(prefs, user);
+  final logStore = LogStore(user);
+  // Signed in to another account, or signed out: the profile and the log follow.
+  watchUserSwitch(auth, db, (next) {
+    prefsStore.switchUser(next);
+    logStore.switchUser(next);
+  });
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => prefsStore),
-        ChangeNotifierProvider(create: (_) => LogStore(user)),
+        ChangeNotifierProvider(create: (_) => logStore),
+        ChangeNotifierProvider(create: (_) => AccountStore(auth)),
         ChangeNotifierProvider(create: (_) => TabNav()),
       ],
       child: const VitalizeApp(),
