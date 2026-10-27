@@ -6,6 +6,7 @@ import '../app/theme.dart';
 import '../app/toast.dart';
 import '../logic/format.dart';
 import '../logic/reminders.dart';
+import '../state/account_store.dart';
 import '../state/log_store.dart';
 import '../state/prefs_store.dart';
 import '../widgets/back_bar.dart';
@@ -13,6 +14,7 @@ import '../widgets/controls.dart';
 import '../widgets/icons.dart';
 import '../widgets/modal_sheet.dart';
 import '../widgets/stepper.dart';
+import 'account_screen.dart';
 import 'profile/entrance.dart';
 import 'profile/wrap_text.dart';
 
@@ -214,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final training = log.sets.length + log.sessions.length;
     final meals = log.meals.length;
     final refused = _refused;
-
+    final account = context.watch<AccountStore?>();
     return Entrance(
       clock: _entrance,
       child: ScrolledPast(
@@ -301,6 +303,19 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ],
                     ),
                     const SizedBox(height: 30),
+                    if (account != null) ...[
+                      Group(
+                        title: 'Tài khoản',
+                        children: [
+                          ValueRow(
+                            label: account.isGuest ? 'Tạo tài khoản hoặc đăng nhập' : 'Tài khoản',
+                            hint: account.isGuest ? 'Đang dùng tài khoản khách' : account.email,
+                            onTap: () => Navigator.of(context).push(vRoute(const AccountScreen())),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+                    ],
                     Group(
                       title: 'Dữ liệu của bạn',
                       children: [
@@ -323,8 +338,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           },
                         ),
                         const _Note(
-                          'Nhật ký lưu trên Firebase, gắn với máy này. Mất mạng vẫn ghi được, có mạng lại tự '
-                          'đồng bộ.',
+                          'Nhật ký lưu trên Firebase theo tài khoản của bạn. Mất mạng vẫn ghi '
+                          'được, có mạng lại tự đồng bộ.',
                         ),
                       ],
                     ),
