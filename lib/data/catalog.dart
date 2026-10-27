@@ -21,6 +21,7 @@ class Catalog {
     required this.moves,
     required this.body,
     required this.sampleMeals,
+    required this.foods,
     required this.demos,
     required this.rigParts,
   }) : muscleById = {for (final m in muscles) m.id: m},
@@ -50,6 +51,9 @@ class Catalog {
 
   /// Sample analysis results for the meal scanner's demo mode.
   final List<List<FoodItem>> sampleMeals;
+
+  /// Common foods to add by hand, one usual portion each (assets/data/foods.json).
+  final List<FoodItem> foods;
 
   /// Exercise demos as exported (see lib/demo for the format), by exercise or move id.
   final Map<String, dynamic> demos;
@@ -100,6 +104,9 @@ class Catalog {
       sampleMeals: [
         for (final meal in await read('sample_meals') as List)
           [for (final f in meal as List) FoodItem.fromJson(f as Map<String, dynamic>)],
+      ],
+      foods: [
+        for (final f in await read('foods') as List) FoodItem.fromJson(f as Map<String, dynamic>),
       ],
       demos: await read('demos') as Map<String, dynamic>,
       rigParts: await read('rig_parts') as Map<String, dynamic>,
