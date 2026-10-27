@@ -23,6 +23,7 @@ import '../widgets/modal_sheet.dart';
 import '../widgets/pressable.dart';
 import 'food/entrance.dart';
 import 'food/meal_thumb.dart';
+import 'food_pick_screen.dart';
 import 'meal_detail_screen.dart';
 import 'meal_scan_screen.dart';
 
@@ -99,6 +100,7 @@ class _FoodScreenState extends State<FoodScreen> with TabEntrance {
               child: _Capture(
                 onCamera: () => _capture(ImageSource.camera),
                 onLibrary: () => _capture(ImageSource.gallery),
+                onManual: () => Navigator.of(context).push(vRoute(const FoodPickScreen())),
               ),
             ),
             const SizedBox(height: 30),
@@ -342,11 +344,11 @@ class _Underline extends CustomPainter {
 
 /// The two ways in: take a photo, or pick one, and what the analysis can and can't do.
 class _Capture extends StatelessWidget {
-  const _Capture({required this.onCamera, required this.onLibrary});
+  const _Capture({required this.onCamera, required this.onLibrary, required this.onManual});
 
   final VoidCallback onCamera;
   final VoidCallback onLibrary;
-
+  final VoidCallback onManual;
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.fromLTRB(V.pad, 28, V.pad, 0),
@@ -368,7 +370,18 @@ class _Capture extends StatelessWidget {
             onPressed: onLibrary,
           ),
         ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 50,
+          child: GhostButton(
+            label: 'Nhập món thủ công',
+            icon: VIcons.plus,
+            expand: true,
+            onPressed: onManual,
+          ),
+        ),
         const SizedBox(height: 14),
+
         Text(
           'AI nhìn ảnh, đoán món và khẩu phần rồi ước tính calo. Sai số thường 15–25%, bạn chỉnh '
           'lại được trước khi lưu.${aiEnabled ? '' : ' Hiện app đang ở chế độ thử, kết quả là mẫu.'}',
