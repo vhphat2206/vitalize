@@ -35,6 +35,13 @@ dev_dependencies:
   # fake_cloud_firestore 4.4 predates platform interface 8.1 (FieldValue.minimum/maximum).
   cloud_firestore_platform_interface: '>=8.0.7 <8.1.0'
 
+dependency_overrides:
+  # google_sign_in_ios 6.3.8 pins GoogleSignIn-iOS 9, which needs gtm-session-fetcher 3.x while
+  # firebase-ios-sdk 13 needs 4.x, so the iOS build can't resolve. This copy only moves it to
+  # GoogleSignIn-iOS 10 (same API, iOS 15+); drop it once the plugin itself does.
+  google_sign_in_ios:
+    path: third_party/google_sign_in_ios
+
 flutter:
   uses-material-design: true
   assets:
