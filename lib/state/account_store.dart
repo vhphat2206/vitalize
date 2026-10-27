@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+
+const googleWebClientId = '455512342228-xxxx.apps.googleusercontent.com'; // điền web client ID của bạn từ Firebase Console
 
 class AccountError implements Exception {
   const AccountError(this.message);
@@ -40,6 +43,7 @@ class AccountStore extends ChangeNotifier {
   final FirebaseAuth _auth;
   late final StreamSubscription<User?> _subscription;
   User? _user;
+  bool _googleReady = false;
 
   /// A guest until an email or Google is linked; also while signing in for the first time.
   bool get isGuest => _user?.isAnonymous ?? true;
@@ -60,30 +64,52 @@ class AccountStore extends ChangeNotifier {
   Future<void> signIn(String email, String password) =>
       _run(() => _auth.signInWithEmailAndPassword(email: email, password: password));
 
-  /// Google: links it to the guest, or signs in to the account it already belongs to.
-  Future<void> continueWithGoogle() => _run(() async {
-    final google = GoogleAuthProvider();
-    final user = _auth.currentUser;
-    if (user != null && user.isAnonymous) {
-      try {
-        await user.linkWithProvider(google);
-        return;
-      } on FirebaseAuthException catch (e) {
-        if (e.code != 'credential-already-in-use') rethrow;
-        // This Google account already has a Vitalize account: sign in to it instead.
-        if (e.credential case final credential?) {
-          await _auth.signInWithCredential(credential);
+  /// Google: the phone's own account picker, then links that account to the guest, or signs in
+  /// to the Vitalize account it already belongs to.
+  Future<void> continueWithGoogle() async {
+    final credential = GoogleAuthProvider.credential(idToken: await _googleIdToken());
+    await _run(() async {
+      final user = _auth.currentUser;
+      if (user != null && user.isAnonymous) {
+        try {
+          await user.linkWithCredential(credential);
           return;
+        } on FirebaseAuthException catch (e) {
+          if (e.code != 'credential-already-in-use') rethrow;
+          // This Google account already has a Vitalize account: sign in to it instead.
         }
       }
+      await _auth.signInWithCredential(credential);
+    });
+  }
+
+  /// Picks a Google account on the phone (Credential Manager) and returns its ID token.
+  Future<String?> _googleIdToken() async {
+    final google = GoogleSignIn.instance;
+    try {
+      if (!_googleReady) {
+        await google.initialize(serverClientId: googleWebClientId);
+        _googleReady = true;
+      }
+      final account = await google.authenticate();
+      return account.authentication.idToken;
+    } on GoogleSignInException catch (e) {
+      debugPrint('Google: ${e.code} ${e.description}');
+      throw AccountError(
+        e.code == GoogleSignInExceptionCode.canceled
+            ? 'Đã huỷ đăng nhập Google.'
+            : 'Không đăng nhập Google được, thử lại nhé.',
+      );
     }
-    await _auth.signInWithProvider(google);
-  });
+  }
 
   Future<void> resetPassword(String email) =>
       _run(() => _auth.sendPasswordResetEmail(email: email));
 
-  Future<void> signOut() => _run(_auth.signOut);
+  Future<void> signOut() => _run(() async {
+    if (_googleReady) await GoogleSignIn.instance.signOut();
+    await _auth.signOut();
+  });
 
   Future<void> _run(Future<void> Function() work) async {
     try {
