@@ -52,3 +52,9 @@ test/failures/
 
 # Firebase CLI
 firebase-debug.log
+
+# Secrets: never commit
+.env
+.env.*
+*service-account*.json
+*-adminsdk-*.json
